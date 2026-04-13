@@ -1,16 +1,13 @@
 package sk.o2.scratchcard.presentation.activation
 
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -18,26 +15,25 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import sk.o2.scratchcard.domain.model.ActivationError
+import sk.o2.scratchcard.domain.model.ActivationWorkState
 import sk.o2.scratchcard.domain.model.ScratchCardState
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
-import sk.o2.scratchcard.domain.usecase.ActivateCardUseCase
-import sk.o2.scratchcard.domain.model.ActivationError
+import sk.o2.scratchcard.domain.scheduler.ActivationScheduler
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActivationViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
-    private val testAppScope = TestScope(testDispatcher)
 
+    private lateinit var scheduler: ActivationScheduler
     private lateinit var repository: ScratchCardRepository
-    private lateinit var activateCardUseCase: ActivateCardUseCase
     private lateinit var stateFlow: MutableStateFlow<ScratchCardState>
-    private lateinit var isActivatingFlow: MutableStateFlow<Boolean>
+    private lateinit var workStateFlow: MutableSharedFlow<ActivationWorkState>
     private lateinit var viewModel: ActivationViewModel
 
     private val testCode = "test-uuid-activation"
@@ -45,18 +41,15 @@ class ActivationViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        repository = mockk(relaxed = true)
         stateFlow = MutableStateFlow(ScratchCardState.Scratched(testCode))
-        isActivatingFlow = MutableStateFlow(false)
-
-        every { repository.state } returns stateFlow
-        every { repository.isActivating } returns isActivatingFlow
-        every { repository.setActivating(any()) } answers {
-            isActivatingFlow.value = firstArg()
+        repository = mockk(relaxed = true) {
+            every { state } returns stateFlow
         }
-
-        activateCardUseCase = mockk(relaxed = true)
-        viewModel = ActivationViewModel(activateCardUseCase, repository, testAppScope)
+        workStateFlow = MutableSharedFlow()
+        scheduler = mockk(relaxed = true) {
+            every { observeState() } returns workStateFlow
+        }
+        viewModel = ActivationViewModel(scheduler, repository)
     }
 
     @After
@@ -65,166 +58,150 @@ class ActivationViewModelTest {
     }
 
     @Test
-    fun `initial state is not activating`() {
+    fun `initial state is not activating`() = runTest {
+        advanceUntilIdle()
         assertFalse(viewModel.isActivating.value)
     }
 
     @Test
-    fun `initial error is null`() {
+    fun `initial error is null`() = runTest {
+        advanceUntilIdle()
         assertNull(viewModel.error.value)
     }
 
     @Test
-    fun `activate sets isActivating to true while in progress`() = runTest {
-        coEvery { activateCardUseCase() } coAnswers {
-            delay(3000)
-            Result.success(Unit)
-        }
+    fun `activate calls scheduler schedule`() = runTest {
+        advanceUntilIdle()
 
         viewModel.activate()
-        testAppScope.advanceTimeBy(100)
+
+        verify { scheduler.schedule() }
+    }
+
+    @Test
+    fun `isActivating is true when state is Running`() = runTest {
+        advanceUntilIdle()
+
+        workStateFlow.emit(ActivationWorkState.Running)
+        advanceUntilIdle()
 
         assertTrue(viewModel.isActivating.value)
     }
 
     @Test
-    fun `activate sets isActivating to false after success`() = runTest {
-        coEvery { activateCardUseCase() } returns Result.success(Unit)
+    fun `isActivating is false when state is Succeeded`() = runTest {
+        advanceUntilIdle()
 
-        viewModel.activate()
-        testAppScope.advanceUntilIdle()
-
-        assertFalse(viewModel.isActivating.value)
-    }
-
-    @Test
-    fun `activate sets isActivating to false after failure`() = runTest {
-        coEvery { activateCardUseCase() } returns Result.failure(
-            ActivationError.ThresholdNotMet("Below threshold")
-        )
-
-        viewModel.activate()
-        testAppScope.advanceUntilIdle()
+        workStateFlow.emit(ActivationWorkState.Succeeded)
+        advanceUntilIdle()
 
         assertFalse(viewModel.isActivating.value)
     }
 
     @Test
-    fun `activate sets error on failure`() = runTest {
-        coEvery { activateCardUseCase() } returns Result.failure(
-            ActivationError.Network("Connection lost")
-        )
+    fun `isActivating is false when state is Failed`() = runTest {
+        advanceUntilIdle()
 
-        viewModel.activate()
-        testAppScope.advanceUntilIdle()
+        workStateFlow.emit(ActivationWorkState.Failed(ActivationError.Network("timeout")))
+        advanceUntilIdle()
 
-        assertNotNull(viewModel.error.value)
+        assertFalse(viewModel.isActivating.value)
     }
 
     @Test
-    fun `activate clears previous error before starting`() = runTest {
-        coEvery { activateCardUseCase() } returns Result.failure(
-            ActivationError.Network("Connection lost")
-        )
-        viewModel.activate()
-        testAppScope.advanceUntilIdle()
-        assertNotNull(viewModel.error.value)
+    fun `isActivating is false when state is Idle`() = runTest {
+        advanceUntilIdle()
 
-        isActivatingFlow.value = false
+        workStateFlow.emit(ActivationWorkState.Idle)
+        advanceUntilIdle()
 
-        coEvery { activateCardUseCase() } coAnswers {
-            delay(1000)
-            Result.success(Unit)
-        }
-        viewModel.activate()
-        assertNull(viewModel.error.value)
+        assertFalse(viewModel.isActivating.value)
     }
 
     @Test
-    fun `dismissError clears the error`() = runTest {
-        coEvery { activateCardUseCase() } returns Result.failure(
-            ActivationError.ThresholdNotMet("Below threshold")
-        )
+    fun `error is set when state is Failed with Network error`() = runTest {
+        advanceUntilIdle()
 
-        viewModel.activate()
-        testAppScope.advanceUntilIdle()
-        assertNotNull(viewModel.error.value)
-
-        viewModel.dismissError()
-
-        assertNull(viewModel.error.value)
-    }
-
-    @Test
-    fun `activate is idempotent while already activating`() = runTest {
-        coEvery { activateCardUseCase() } coAnswers {
-            delay(3000)
-            Result.success(Unit)
-        }
-
-        viewModel.activate()
-        testAppScope.advanceTimeBy(100)
-        viewModel.activate()
-        viewModel.activate()
-        testAppScope.advanceUntilIdle()
-
-        verify(exactly = 1) { repository.setActivating(true) }
-        verify(exactly = 1) { repository.setActivating(false) }
-    }
-
-    @Test
-    fun `non-cancellation - activation completes even when viewModel is destroyed`() = runTest {
-        coEvery { activateCardUseCase() } coAnswers {
-            delay(3000)
-            stateFlow.value = ScratchCardState.Activated(testCode)
-            Result.success(Unit)
-        }
-
-        viewModel.activate()
-        testAppScope.advanceTimeBy(500)
-
-        @Suppress("UNUSED_VALUE")
-        viewModel = ActivationViewModel(activateCardUseCase, repository, testAppScope)
-
-        testAppScope.advanceUntilIdle()
-
-        assertEquals(ScratchCardState.Activated(testCode), stateFlow.value)
-        assertFalse(isActivatingFlow.value)
-    }
-
-    @Test
-    fun `error is ActivationError type for Network error`() = runTest {
-        coEvery { activateCardUseCase() } returns Result.failure(
-            ActivationError.Network("timeout")
-        )
-
-        viewModel.activate()
-        testAppScope.advanceUntilIdle()
+        workStateFlow.emit(ActivationWorkState.Failed(ActivationError.Network("Connection lost")))
+        advanceUntilIdle()
 
         assertTrue(viewModel.error.value is ActivationError.Network)
+        assertEquals("Connection lost", viewModel.error.value?.message)
     }
 
     @Test
-    fun `error is ActivationError type for InvalidResponse error`() = runTest {
-        coEvery { activateCardUseCase() } returns Result.failure(
-            ActivationError.InvalidResponse("bad data")
-        )
+    fun `error is ThresholdNotMet when state is Failed with threshold error`() = runTest {
+        advanceUntilIdle()
 
-        viewModel.activate()
-        testAppScope.advanceUntilIdle()
+        workStateFlow.emit(
+            ActivationWorkState.Failed(ActivationError.ThresholdNotMet("too low"))
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.error.value is ActivationError.ThresholdNotMet)
+    }
+
+    @Test
+    fun `error is InvalidResponse when state is Failed with parse error`() = runTest {
+        advanceUntilIdle()
+
+        workStateFlow.emit(
+            ActivationWorkState.Failed(ActivationError.InvalidResponse("bad data"))
+        )
+        advanceUntilIdle()
 
         assertTrue(viewModel.error.value is ActivationError.InvalidResponse)
     }
 
     @Test
-    fun `error is ActivationError type for ThresholdNotMet error`() = runTest {
-        coEvery { activateCardUseCase() } returns Result.failure(
-            ActivationError.ThresholdNotMet("too low")
-        )
+    fun `error is cleared on success after failure`() = runTest {
+        advanceUntilIdle()
+
+        workStateFlow.emit(ActivationWorkState.Failed(ActivationError.Network("timeout")))
+        advanceUntilIdle()
+        assertTrue(viewModel.error.value is ActivationError.Network)
+
+        workStateFlow.emit(ActivationWorkState.Succeeded)
+        advanceUntilIdle()
+        assertNull(viewModel.error.value)
+    }
+
+    @Test
+    fun `dismissError clears the error`() = runTest {
+        advanceUntilIdle()
+
+        workStateFlow.emit(ActivationWorkState.Failed(ActivationError.Network("timeout")))
+        advanceUntilIdle()
+        assertTrue(viewModel.error.value is ActivationError.Network)
+
+        viewModel.dismissError()
+        assertNull(viewModel.error.value)
+    }
+
+    @Test
+    fun `dismissed error does not reappear from same state emission`() = runTest {
+        advanceUntilIdle()
+
+        workStateFlow.emit(ActivationWorkState.Failed(ActivationError.Network("timeout")))
+        advanceUntilIdle()
+
+        viewModel.dismissError()
+        assertNull(viewModel.error.value)
+
+        workStateFlow.emit(ActivationWorkState.Failed(ActivationError.Network("timeout")))
+        advanceUntilIdle()
+        assertNull(viewModel.error.value)
+    }
+
+    @Test
+    fun `activate clears previous error`() = runTest {
+        advanceUntilIdle()
+
+        workStateFlow.emit(ActivationWorkState.Failed(ActivationError.Network("timeout")))
+        advanceUntilIdle()
+        assertTrue(viewModel.error.value is ActivationError.Network)
 
         viewModel.activate()
-        testAppScope.advanceUntilIdle()
-
-        assertTrue(viewModel.error.value is ActivationError.ThresholdNotMet)
+        assertNull(viewModel.error.value)
     }
 }

@@ -1,51 +1,67 @@
 package sk.o2.scratchcard.presentation.activation
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import sk.o2.scratchcard.di.ApplicationScope
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import sk.o2.scratchcard.domain.model.ActivationError
+import sk.o2.scratchcard.domain.model.ActivationWorkState
 import sk.o2.scratchcard.domain.model.ScratchCardState
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
-import sk.o2.scratchcard.domain.usecase.ActivateCardUseCase
-import sk.o2.scratchcard.domain.model.ActivationError
+import sk.o2.scratchcard.domain.scheduler.ActivationScheduler
 import javax.inject.Inject
 
 @HiltViewModel
 class ActivationViewModel @Inject constructor(
-    private val activateCardUseCase: ActivateCardUseCase,
+    private val scheduler: ActivationScheduler,
     private val repository: ScratchCardRepository,
-    @ApplicationScope private val appScope: CoroutineScope
 ) : ViewModel() {
 
     val cardState: StateFlow<ScratchCardState> = repository.state
 
-    val isActivating: StateFlow<Boolean> = repository.isActivating
+    private val _isActivating = MutableStateFlow(false)
+    val isActivating: StateFlow<Boolean> = _isActivating.asStateFlow()
 
     private val _error = MutableStateFlow<ActivationError?>(null)
     val error: StateFlow<ActivationError?> = _error.asStateFlow()
 
-    fun activate() {
-        if (repository.isActivating.value) return
+    private var errorDismissed = false
 
-        repository.setActivating(true)
-        _error.value = null
+    init {
+        scheduler.observeState()
+            .onEach { state -> processState(state) }
+            .launchIn(viewModelScope)
+    }
 
-        appScope.launch {
-            val result = activateCardUseCase()
-            repository.setActivating(false)
+    private fun processState(state: ActivationWorkState) {
+        _isActivating.value = state is ActivationWorkState.Running
 
-            result.onFailure { throwable ->
-                _error.value = throwable as? ActivationError
-                    ?: ActivationError.Unknown(throwable.message ?: "An unexpected error occurred")
+        when (state) {
+            is ActivationWorkState.Failed -> {
+                if (!errorDismissed) {
+                    _error.value = state.error
+                }
             }
+            is ActivationWorkState.Succeeded,
+            is ActivationWorkState.Running -> {
+                _error.value = null
+            }
+            is ActivationWorkState.Idle -> Unit
         }
     }
 
+    fun activate() {
+        errorDismissed = false
+        _error.value = null
+        scheduler.schedule()
+    }
+
     fun dismissError() {
+        errorDismissed = true
         _error.value = null
     }
 }
