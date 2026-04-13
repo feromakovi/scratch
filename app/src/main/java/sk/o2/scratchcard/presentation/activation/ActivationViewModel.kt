@@ -11,7 +11,7 @@ import sk.o2.scratchcard.di.ApplicationScope
 import sk.o2.scratchcard.domain.model.ScratchCardState
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
 import sk.o2.scratchcard.domain.usecase.ActivateCardUseCase
-import sk.o2.scratchcard.domain.usecase.ActivationError
+import sk.o2.scratchcard.domain.model.ActivationError
 import javax.inject.Inject
 
 @HiltViewModel
@@ -25,8 +25,8 @@ class ActivationViewModel @Inject constructor(
 
     val isActivating: StateFlow<Boolean> = repository.isActivating
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    private val _error = MutableStateFlow<ActivationError?>(null)
+    val error: StateFlow<ActivationError?> = _error.asStateFlow()
 
     fun activate() {
         if (repository.isActivating.value) return
@@ -39,23 +39,13 @@ class ActivationViewModel @Inject constructor(
             repository.setActivating(false)
 
             result.onFailure { throwable ->
-                _error.value = mapErrorMessage(throwable)
+                _error.value = throwable as? ActivationError
+                    ?: ActivationError.Unknown(throwable.message ?: "An unexpected error occurred")
             }
         }
     }
 
     fun dismissError() {
         _error.value = null
-    }
-
-    private fun mapErrorMessage(throwable: Throwable): String {
-        return when (throwable) {
-            is ActivationError.Network -> "Network error. Please check your connection and try again."
-            is ActivationError.InvalidResponse -> "Invalid response from server."
-            is ActivationError.ThresholdNotMet -> "Activation failed. The version does not meet the required threshold."
-            is ActivationError.InvalidState -> throwable.message ?: "Invalid card state."
-            is ActivationError.Unknown -> throwable.message ?: "An unexpected error occurred."
-            else -> throwable.message ?: "An unexpected error occurred. Please try again."
-        }
     }
 }

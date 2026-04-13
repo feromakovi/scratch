@@ -1,5 +1,6 @@
 package sk.o2.scratchcard.domain.usecase
 
+import sk.o2.scratchcard.domain.model.ActivationError
 import sk.o2.scratchcard.domain.model.ScratchCardState
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
 import java.io.IOException
@@ -45,12 +46,4 @@ class ActivateCardUseCase @Inject constructor(
     companion object {
         const val ACTIVATION_THRESHOLD = 277028
     }
-}
-
-sealed class ActivationError(message: String) : Exception(message) {
-    class Network(message: String) : ActivationError(message)
-    class InvalidResponse(message: String) : ActivationError(message)
-    class ThresholdNotMet(message: String) : ActivationError(message)
-    class InvalidState(message: String) : ActivationError(message)
-    class Unknown(message: String) : ActivationError(message)
 }

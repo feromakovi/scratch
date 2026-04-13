@@ -34,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import sk.o2.scratchcard.R
 import sk.o2.scratchcard.domain.model.ScratchCardState
+import sk.o2.scratchcard.domain.model.ActivationError
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,12 +46,21 @@ fun ActivationScreen(
     val isActivating by viewModel.isActivating.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
 
-    // Error dialog
-    error?.let { errorMessage ->
+    error?.let { activationError ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissError() },
             title = { Text(stringResource(R.string.error_dialog_title)) },
-            text = { Text(errorMessage) },
+            text = {
+                Text(
+                    when (activationError) {
+                        is ActivationError.Network -> stringResource(R.string.error_network)
+                        is ActivationError.InvalidResponse -> stringResource(R.string.error_invalid_response)
+                        is ActivationError.ThresholdNotMet -> stringResource(R.string.error_activation_failed)
+                        is ActivationError.InvalidState -> stringResource(R.string.error_activation_failed)
+                        is ActivationError.Unknown -> stringResource(R.string.error_unknown)
+                    }
+                )
+            },
             confirmButton = {
                 TextButton(onClick = { viewModel.dismissError() }) {
                     Text(stringResource(R.string.error_dismiss))
@@ -67,7 +77,7 @@ fun ActivationScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.navigate_back)
                         )
                     }
                 },
@@ -86,54 +96,52 @@ fun ActivationScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            when {
-                isActivating -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(64.dp),
-                        strokeWidth = 4.dp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = stringResource(R.string.activating_label),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-
-                cardState is ScratchCardState.Unscratched -> {
-                    Text(
-                        text = stringResource(R.string.card_not_scratched),
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                cardState is ScratchCardState.Scratched -> {
-                    Text(
-                        text = stringResource(R.string.state_scratched),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = (cardState as ScratchCardState.Scratched).code,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = { viewModel.activate() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text(stringResource(R.string.activate_button))
+            when (cardState) {
+                is ScratchCardState.Unscratched -> {
+                    if (isActivating) {
+                        ActivatingIndicator()
+                    } else {
+                        Text(
+                            text = stringResource(R.string.card_not_scratched),
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
-                cardState is ScratchCardState.Activated -> {
+                is ScratchCardState.Scratched -> {
+                    val scratched = cardState as ScratchCardState.Scratched
+                    if (isActivating) {
+                        ActivatingIndicator()
+                    } else {
+                        Text(
+                            text = stringResource(R.string.state_scratched),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = scratched.code,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { viewModel.activate() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        ) {
+                            Text(stringResource(R.string.activate_button))
+                        }
+                    }
+                }
+
+                is ScratchCardState.Activated -> {
+                    val activated = cardState as ScratchCardState.Activated
                     Text(
                         text = stringResource(R.string.activation_success),
                         style = MaterialTheme.typography.headlineSmall,
@@ -142,7 +150,7 @@ fun ActivationScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = (cardState as ScratchCardState.Activated).code,
+                        text = activated.code,
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
                         textAlign = TextAlign.Center,
@@ -152,4 +160,17 @@ fun ActivationScreen(
             }
         }
     }
+}
+
+@Composable
+private fun ActivatingIndicator() {
+    CircularProgressIndicator(
+        modifier = Modifier.size(64.dp),
+        strokeWidth = 4.dp
+    )
+    Spacer(modifier = Modifier.height(16.dp))
+    Text(
+        text = stringResource(R.string.activating_label),
+        style = MaterialTheme.typography.bodyLarge
+    )
 }
