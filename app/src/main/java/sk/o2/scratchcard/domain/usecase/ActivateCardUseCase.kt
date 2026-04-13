@@ -9,10 +9,6 @@ class ActivateCardUseCase @Inject constructor(
     private val repository: ScratchCardRepository
 ) {
 
-    companion object {
-        const val ACTIVATION_THRESHOLD = 277028
-    }
-
     suspend operator fun invoke(): Result<Unit> {
         val current = repository.state.value
         if (current !is ScratchCardState.Scratched) {
@@ -44,6 +40,10 @@ class ActivateCardUseCase @Inject constructor(
                 else -> throw ActivationError.Unknown(error.message ?: "Unknown error")
             }
         }
+    }
+
+    companion object {
+        const val ACTIVATION_THRESHOLD = 277028
     }
 }
 
