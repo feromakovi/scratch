@@ -151,7 +151,9 @@ app/src/main/java/sk/o2/scratchcard/
 │   └── RepositoryModule.kt                    # Binds Repository
 ├── domain/
 │   ├── dispatcher/DispatcherProvider.kt        # Interface for testability
-│   ├── model/ScratchCardState.kt              # Sealed class: 3 states
+│   ├── model/
+│   │   ├── ActivationError.kt                # Typed error hierarchy
+│   │   └── ScratchCardState.kt               # Sealed class: 3 states
 │   ├── repository/ScratchCardRepository.kt    # Interface
 │   └── usecase/
 │       ├── ActivateCardUseCase.kt             # Validation logic (> 277028)
