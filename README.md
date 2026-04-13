@@ -32,7 +32,9 @@ The project follows **Clean Architecture** with strict layer separation. Depende
 ┌──────────────────────▼──────────────────────────────┐
 │                    DOMAIN                            │
 │  ScratchCardState (sealed class — state machine)     │
-│  ScratchCardRepository (interface)                   │
+│  ScratchCardRepository (interface — state holder)    │
+│  ScratchDataSource (interface — local scratch op)    │
+│  ActivationDataSource (interface — remote API call)  │
 │  DispatcherProvider (interface)                       │
 │  ScratchCardUseCase / ActivateCardUseCase            │
 │                                                      │
@@ -43,7 +45,9 @@ The project follows **Clean Architecture** with strict layer separation. Depende
 │                     DATA                             │
 │  O2Api (Retrofit)                                    │
 │  VersionResponse (DTO)                               │
-│  ScratchCardRepositoryImpl (Singleton StateFlow)     │
+│  ScratchCardRepositoryImpl (Singleton state machine) │
+│  ScratchDataSourceImpl (delay + UUID generation)     │
+│  ActivationDataSourceImpl (Retrofit API call)        │
 │  DefaultDispatcherProvider                           │
 │                                                      │
 │  Depends on: Domain interfaces, Retrofit, OkHttp     │
@@ -101,6 +105,18 @@ The project follows **Clean Architecture** with strict layer separation. Depende
 | Scratch | `viewModelScope` | Must cancel on back navigation. `delay()` is cooperative with cancellation. |
 | Activation | `@ApplicationScope` (Hilt-provided) | Must NOT cancel on back navigation. The app-scope coroutine survives ViewModel destruction. |
 
+### Separated Data Sources
+
+Data operations are split into dedicated interfaces following the Single Responsibility Principle:
+
+| Interface | Responsibility | Implementation |
+|---|---|---|
+| `ScratchCardRepository` | State machine (state + transitions + isActivating flag) | `ScratchCardRepositoryImpl` (`@Singleton`) |
+| `ScratchDataSource` | Local scratch operation (2s delay + UUID) | `ScratchDataSourceImpl` (stateless) |
+| `ActivationDataSource` | Remote API call to O2 | `ActivationDataSourceImpl` (stateless) |
+
+Each use case injects only the interfaces it needs — `ScratchCardUseCase` takes `ScratchCardRepository` + `ScratchDataSource`, while `ActivateCardUseCase` takes `ScratchCardRepository` + `ActivationDataSource`. No component has access to capabilities it doesn't use.
+
 ### Singleton Repository as State Holder
 
 The `ScratchCardRepository` is `@Singleton`-scoped. It holds a `MutableStateFlow<ScratchCardState>` that serves as the single source of truth across all screens. This means:
@@ -143,18 +159,24 @@ app/src/main/java/sk/o2/scratchcard/
 │   ├── api/O2Api.kt                           # Retrofit interface
 │   ├── dispatcher/DefaultDispatcherProvider.kt # Production dispatchers
 │   ├── model/VersionResponse.kt               # API response DTO
-│   └── repository/ScratchCardRepositoryImpl.kt # Singleton state + data ops
+│   └── repository/
+│       ├── ActivationDataSourceImpl.kt        # Remote API call
+│       ├── ScratchCardRepositoryImpl.kt       # Singleton state machine
+│       └── ScratchDataSourceImpl.kt           # Local scratch (delay + UUID)
 ├── di/
 │   ├── AppModule.kt                           # OkHttp, Retrofit, API, AppScope
 │   ├── DispatcherModule.kt                    # Binds DispatcherProvider
 │   ├── Qualifiers.kt                          # @ApplicationScope
-│   └── RepositoryModule.kt                    # Binds Repository
+│   └── RepositoryModule.kt                    # Binds Repository + DataSources
 ├── domain/
 │   ├── dispatcher/DispatcherProvider.kt        # Interface for testability
 │   ├── model/
 │   │   ├── ActivationError.kt                # Typed error hierarchy
 │   │   └── ScratchCardState.kt               # Sealed class: 3 states
-│   ├── repository/ScratchCardRepository.kt    # Interface
+│   ├── repository/
+│   │   ├── ActivationDataSource.kt            # Interface — remote API call
+│   │   ├── ScratchCardRepository.kt           # Interface — state machine
+│   │   └── ScratchDataSource.kt               # Interface — local scratch op
 │   └── usecase/
 │       ├── ActivateCardUseCase.kt             # Validation logic (> 277028)
 │       └── ScratchCardUseCase.kt              # Scratch orchestration
@@ -173,7 +195,10 @@ app/src/main/java/sk/o2/scratchcard/
         └── ScratchViewModel.kt                # viewModelScope coroutine
 
 app/src/test/java/sk/o2/scratchcard/
-├── data/repository/ScratchCardRepositoryImplTest.kt
+├── data/repository/
+│   ├── ActivationDataSourceImplTest.kt
+│   ├── ScratchCardRepositoryImplTest.kt
+│   └── ScratchDataSourceImplTest.kt
 ├── domain/usecase/
 │   ├── ActivateCardUseCaseTest.kt
 │   └── ScratchCardUseCaseTest.kt
@@ -186,8 +211,10 @@ app/src/test/java/sk/o2/scratchcard/
 
 | Test Class | Focus |
 |---|---|
-| `ScratchCardUseCaseTest` | State validation, delegation to repository, error handling |
+| `ScratchCardUseCaseTest` | State validation, delegation to data source, error handling |
 | `ActivateCardUseCaseTest` | Threshold logic (>, ==, <), parse errors, network errors, state guards |
 | `ScratchViewModelTest` | Loading state, idempotency, cooperative cancellation |
 | `ActivationViewModelTest` | Loading state, non-cancellation in appScope, error mapping, dismiss |
-| `ScratchCardRepositoryImplTest` | Initial state, timing, valid/invalid transitions, API delegation |
+| `ScratchCardRepositoryImplTest` | Initial state, valid/invalid state transitions, isActivating flag |
+| `ScratchDataSourceImplTest` | UUID generation, 2-second delay timing |
+| `ActivationDataSourceImplTest` | API delegation, network error propagation |

@@ -8,32 +8,26 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 import sk.o2.scratchcard.domain.model.ActivationError
 import sk.o2.scratchcard.domain.model.ScratchCardState
+import sk.o2.scratchcard.domain.repository.ActivationDataSource
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
 import java.io.IOException
 
 class ActivateCardUseCaseTest {
 
-    private lateinit var repository: ScratchCardRepository
-    private lateinit var useCase: ActivateCardUseCase
-    private lateinit var stateFlow: MutableStateFlow<ScratchCardState>
-
     private val testCode = "test-uuid-789"
-
-    @Before
-    fun setup() {
-        repository = mockk(relaxed = true)
-        stateFlow = MutableStateFlow(ScratchCardState.Scratched(testCode))
-        every { repository.state } returns stateFlow
-        useCase = ActivateCardUseCase(repository)
+    private val stateFlow = MutableStateFlow<ScratchCardState>(ScratchCardState.Scratched(testCode))
+    private val repository: ScratchCardRepository = mockk(relaxed = true) {
+        every { state } returns stateFlow
     }
+    private val activationDataSource: ActivationDataSource = mockk(relaxed = true)
+    private val useCase = ActivateCardUseCase(repository, activationDataSource)
 
     @Test
     fun `activation succeeds when android version is greater than threshold`() = runTest {
-        coEvery { repository.activate(testCode) } returns "287028"
+        coEvery { activationDataSource.activate(testCode) } returns "287028"
 
         val result = useCase()
 
@@ -43,7 +37,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation succeeds with version just above threshold`() = runTest {
-        coEvery { repository.activate(testCode) } returns "277029"
+        coEvery { activationDataSource.activate(testCode) } returns "277029"
 
         val result = useCase()
 
@@ -53,7 +47,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation fails when android version equals threshold`() = runTest {
-        coEvery { repository.activate(testCode) } returns "277028"
+        coEvery { activationDataSource.activate(testCode) } returns "277028"
 
         val result = useCase()
 
@@ -64,7 +58,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation fails when android version is less than threshold`() = runTest {
-        coEvery { repository.activate(testCode) } returns "100000"
+        coEvery { activationDataSource.activate(testCode) } returns "100000"
 
         val result = useCase()
 
@@ -74,7 +68,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation fails when android version is zero`() = runTest {
-        coEvery { repository.activate(testCode) } returns "0"
+        coEvery { activationDataSource.activate(testCode) } returns "0"
 
         val result = useCase()
 
@@ -84,7 +78,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation fails when android version is negative`() = runTest {
-        coEvery { repository.activate(testCode) } returns "-1"
+        coEvery { activationDataSource.activate(testCode) } returns "-1"
 
         val result = useCase()
 
@@ -94,7 +88,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation fails when android version is non-numeric`() = runTest {
-        coEvery { repository.activate(testCode) } returns "not-a-number"
+        coEvery { activationDataSource.activate(testCode) } returns "not-a-number"
 
         val result = useCase()
 
@@ -104,7 +98,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation fails when android version is empty`() = runTest {
-        coEvery { repository.activate(testCode) } returns ""
+        coEvery { activationDataSource.activate(testCode) } returns ""
 
         val result = useCase()
 
@@ -114,7 +108,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation fails with Network error on IOException`() = runTest {
-        coEvery { repository.activate(testCode) } throws IOException("No internet")
+        coEvery { activationDataSource.activate(testCode) } throws IOException("No internet")
 
         val result = useCase()
 
@@ -124,7 +118,7 @@ class ActivateCardUseCaseTest {
 
     @Test
     fun `activation fails with Unknown error on unexpected exception`() = runTest {
-        coEvery { repository.activate(testCode) } throws RuntimeException("Something broke")
+        coEvery { activationDataSource.activate(testCode) } throws RuntimeException("Something broke")
 
         val result = useCase()
 

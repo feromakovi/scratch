@@ -9,29 +9,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 import sk.o2.scratchcard.domain.model.ScratchCardState
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
+import sk.o2.scratchcard.domain.repository.ScratchDataSource
 
 class ScratchCardUseCaseTest {
 
-    private lateinit var repository: ScratchCardRepository
-    private lateinit var useCase: ScratchCardUseCase
-    private lateinit var stateFlow: MutableStateFlow<ScratchCardState>
-
-    @Before
-    fun setup() {
-        repository = mockk(relaxed = true)
-        stateFlow = MutableStateFlow(ScratchCardState.Unscratched)
-        every { repository.state } returns stateFlow
-        useCase = ScratchCardUseCase(repository)
+    private val stateFlow = MutableStateFlow<ScratchCardState>(ScratchCardState.Unscratched)
+    private val repository: ScratchCardRepository = mockk(relaxed = true) {
+        every { state } returns stateFlow
     }
+    private val scratchDataSource: ScratchDataSource = mockk(relaxed = true)
+    private val useCase = ScratchCardUseCase(repository, scratchDataSource)
 
     @Test
     fun `scratch succeeds when card is Unscratched`() = runTest {
         val expectedCode = "test-uuid-123"
-        coEvery { repository.scratch() } returns expectedCode
+        coEvery { scratchDataSource.scratch() } returns expectedCode
 
         val result = useCase()
 
@@ -42,7 +37,7 @@ class ScratchCardUseCaseTest {
     @Test
     fun `scratch transitions state to Scratched with generated code`() = runTest {
         val expectedCode = "test-uuid-456"
-        coEvery { repository.scratch() } returns expectedCode
+        coEvery { scratchDataSource.scratch() } returns expectedCode
 
         useCase()
 
@@ -70,18 +65,18 @@ class ScratchCardUseCaseTest {
     }
 
     @Test
-    fun `scratch does not call repository when state is not Unscratched`() = runTest {
+    fun `scratch does not call data source when state is not Unscratched`() = runTest {
         stateFlow.value = ScratchCardState.Scratched("existing-code")
 
         useCase()
 
-        coVerify(exactly = 0) { repository.scratch() }
+        coVerify(exactly = 0) { scratchDataSource.scratch() }
         verify(exactly = 0) { repository.updateState(any()) }
     }
 
     @Test
-    fun `scratch returns failure when repository scratch throws`() = runTest {
-        coEvery { repository.scratch() } throws RuntimeException("scratch failed")
+    fun `scratch returns failure when data source throws`() = runTest {
+        coEvery { scratchDataSource.scratch() } throws RuntimeException("scratch failed")
 
         val result = useCase()
 
