@@ -14,7 +14,6 @@ okhttp = "4.12.0"
 workManager = "2.10.0"
 hiltWork = "1.2.0"
 coroutines = "1.9.0"
-archCoreTesting = "2.2.0"
 junit = "4.13.2"
 mockk = "1.13.13"
 turbine = "1.2.0"
@@ -62,7 +61,6 @@ hilt-work-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
-arch-core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "archCoreTesting" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
