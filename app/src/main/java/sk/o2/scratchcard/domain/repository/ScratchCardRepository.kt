@@ -9,10 +9,6 @@ interface ScratchCardRepository {
 
     val isActivating: StateFlow<Boolean>
 
-    suspend fun scratch(): String
-
-    suspend fun activate(code: String): String
-
     fun updateState(newState: ScratchCardState)
 
     fun setActivating(value: Boolean)

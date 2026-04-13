@@ -2,12 +2,14 @@ package sk.o2.scratchcard.domain.usecase
 
 import sk.o2.scratchcard.domain.model.ActivationError
 import sk.o2.scratchcard.domain.model.ScratchCardState
+import sk.o2.scratchcard.domain.repository.ActivationDataSource
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
 import java.io.IOException
 import javax.inject.Inject
 
 class ActivateCardUseCase @Inject constructor(
-    private val repository: ScratchCardRepository
+    private val repository: ScratchCardRepository,
+    private val activationDataSource: ActivationDataSource,
 ) {
 
     suspend operator fun invoke(): Result<Unit> {
@@ -21,7 +23,7 @@ class ActivateCardUseCase @Inject constructor(
         }
 
         return runCatching {
-            val androidVersion = repository.activate(current.code)
+            val androidVersion = activationDataSource.activate(current.code)
             val versionInt = androidVersion.toIntOrNull()
                 ?: throw ActivationError.InvalidResponse(
                     "Server returned non-numeric version: $androidVersion"

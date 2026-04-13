@@ -2,10 +2,12 @@ package sk.o2.scratchcard.domain.usecase
 
 import sk.o2.scratchcard.domain.model.ScratchCardState
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
+import sk.o2.scratchcard.domain.repository.ScratchDataSource
 import javax.inject.Inject
 
 class ScratchCardUseCase @Inject constructor(
-    private val repository: ScratchCardRepository
+    private val repository: ScratchCardRepository,
+    private val scratchDataSource: ScratchDataSource,
 ) {
 
     suspend operator fun invoke(): Result<String> {
@@ -17,7 +19,7 @@ class ScratchCardUseCase @Inject constructor(
         }
 
         return runCatching {
-            val code = repository.scratch()
+            val code = scratchDataSource.scratch()
             repository.updateState(ScratchCardState.Scratched(code))
             code
         }
