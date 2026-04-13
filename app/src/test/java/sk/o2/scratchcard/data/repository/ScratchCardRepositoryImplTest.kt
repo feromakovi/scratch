@@ -1,8 +1,6 @@
 package sk.o2.scratchcard.data.repository
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import sk.o2.scratchcard.domain.model.ScratchCardState
 
@@ -13,11 +11,6 @@ class ScratchCardRepositoryImplTest {
     @Test
     fun `initial state is Unscratched`() {
         assertEquals(ScratchCardState.Unscratched, repository.state.value)
-    }
-
-    @Test
-    fun `initial isActivating is false`() {
-        assertFalse(repository.isActivating.value)
     }
 
     @Test
@@ -62,14 +55,5 @@ class ScratchCardRepositoryImplTest {
     fun `updateState rejects double scratch`() {
         repository.updateState(ScratchCardState.Scratched("code-123"))
         repository.updateState(ScratchCardState.Scratched("code-456"))
-    }
-
-    @Test
-    fun `setActivating updates isActivating flow`() {
-        repository.setActivating(true)
-        assertTrue(repository.isActivating.value)
-
-        repository.setActivating(false)
-        assertFalse(repository.isActivating.value)
     }
 }

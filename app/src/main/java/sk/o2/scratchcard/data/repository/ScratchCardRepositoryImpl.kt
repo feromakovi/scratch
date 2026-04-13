@@ -15,18 +15,11 @@ class ScratchCardRepositoryImpl @Inject constructor() : ScratchCardRepository {
     private val _state = MutableStateFlow<ScratchCardState>(ScratchCardState.Unscratched)
     override val state: StateFlow<ScratchCardState> = _state.asStateFlow()
 
-    private val _isActivating = MutableStateFlow(false)
-    override val isActivating: StateFlow<Boolean> = _isActivating.asStateFlow()
-
     override fun updateState(newState: ScratchCardState) {
         _state.update { current ->
             validateTransition(from = current, to = newState)
             newState
         }
-    }
-
-    override fun setActivating(value: Boolean) {
-        _isActivating.value = value
     }
 
     private fun validateTransition(from: ScratchCardState, to: ScratchCardState) {

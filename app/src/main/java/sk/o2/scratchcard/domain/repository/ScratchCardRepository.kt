@@ -7,9 +7,5 @@ interface ScratchCardRepository {
 
     val state: StateFlow<ScratchCardState>
 
-    val isActivating: StateFlow<Boolean>
-
     fun updateState(newState: ScratchCardState)
-
-    fun setActivating(value: Boolean)
 }
