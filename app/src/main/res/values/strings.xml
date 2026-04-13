@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">O2 Scratch Card</string>
+
+    <!-- Main Screen -->
+    <string name="main_title">Scratch Card</string>
+    <string name="state_unscratched">Unscratched</string>
+    <string name="state_scratched">Scratched</string>
+    <string name="state_activated">Activated</string>
+    <string name="go_to_scratch">Go to Scratch</string>
+    <string name="go_to_activation">Go to Activation</string>
+
+    <!-- Scratch Screen -->
+    <string name="scratch_title">Scratch Card</string>
+    <string name="scratch_button">Scratch</string>
+    <string name="scratching_label">Scratching…</string>
+    <string name="code_label">Code: %1$s</string>
+    <string name="already_scratched">Card already scratched</string>
+    <string name="already_activated">Card already activated</string>
+
+    <!-- Activation Screen -->
+    <string name="activation_title">Activate Card</string>
+    <string name="activate_button">Activate</string>
+    <string name="activating_label">Activating…</string>
+    <string name="activation_success">Card activated successfully!</string>
+    <string name="card_not_scratched">Card has not been scratched yet</string>
+
+    <!-- Errors -->
+    <string name="error_dialog_title">Activation Error</string>
+    <string name="error_dismiss">OK</string>
+    <string name="error_network">Network error. Please check your connection and try again.</string>
+    <string name="error_invalid_response">Invalid response from server.</string>
+    <string name="error_activation_failed">Activation failed. The version does not meet the required threshold.</string>
+    <string name="error_unknown">An unexpected error occurred. Please try again.</string>
+</resources>
