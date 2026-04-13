@@ -11,7 +11,10 @@ hilt = "2.53.1"
 hiltNavigationCompose = "1.2.0"
 retrofit = "2.11.0"
 okhttp = "4.12.0"
+workManager = "2.10.0"
+hiltWork = "1.2.0"
 coroutines = "1.9.0"
+archCoreTesting = "2.2.0"
 junit = "4.13.2"
 mockk = "1.13.13"
 turbine = "1.2.0"
@@ -49,10 +52,17 @@ okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-i
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
+# WorkManager
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workManager" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
+hilt-work-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltWork" }
+
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+arch-core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "archCoreTesting" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

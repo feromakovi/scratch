@@ -78,9 +78,16 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.arch.core.testing)
 }
