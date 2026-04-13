@@ -50,7 +50,7 @@ fun ScratchScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.navigate_back)
                         )
                     }
                 },
@@ -100,6 +100,7 @@ fun ScratchScreen(
                 }
 
                 cardState is ScratchCardState.Scratched -> {
+                    val scratched = cardState as ScratchCardState.Scratched
                     Text(
                         text = stringResource(R.string.state_scratched),
                         style = MaterialTheme.typography.headlineSmall,
@@ -107,7 +108,7 @@ fun ScratchScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = stringResource(R.string.code_label, (cardState as ScratchCardState.Scratched).code),
+                        text = stringResource(R.string.code_label, scratched.code),
                         style = MaterialTheme.typography.bodyMedium,
                         fontFamily = FontFamily.Monospace,
                         textAlign = TextAlign.Center
@@ -115,6 +116,7 @@ fun ScratchScreen(
                 }
 
                 cardState is ScratchCardState.Activated -> {
+                    val activated = cardState as ScratchCardState.Activated
                     Text(
                         text = stringResource(R.string.already_activated),
                         style = MaterialTheme.typography.headlineSmall,
@@ -122,7 +124,7 @@ fun ScratchScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = stringResource(R.string.code_label, (cardState as ScratchCardState.Activated).code),
+                        text = stringResource(R.string.code_label, activated.code),
                         style = MaterialTheme.typography.bodyMedium,
                         fontFamily = FontFamily.Monospace,
                         textAlign = TextAlign.Center

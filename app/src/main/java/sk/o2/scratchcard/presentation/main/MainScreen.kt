@@ -102,7 +102,7 @@ private fun StateCard(cardState: ScratchCardState) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "State",
+                text = stringResource(R.string.state_label),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -124,28 +124,20 @@ private fun StateCard(cardState: ScratchCardState) {
                 }
             )
 
-            when (cardState) {
-                is ScratchCardState.Scratched -> {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = cardState.code,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                is ScratchCardState.Activated -> {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = cardState.code,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                else -> { /* No code to display */ }
+            val code = when (cardState) {
+                is ScratchCardState.Scratched -> cardState.code
+                is ScratchCardState.Activated -> cardState.code
+                else -> null
+            }
+            if (code != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = code,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
