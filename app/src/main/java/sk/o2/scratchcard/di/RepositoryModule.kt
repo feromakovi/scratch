@@ -7,9 +7,11 @@ import dagger.hilt.components.SingletonComponent
 import sk.o2.scratchcard.data.repository.ActivationDataSourceImpl
 import sk.o2.scratchcard.data.repository.ScratchCardRepositoryImpl
 import sk.o2.scratchcard.data.repository.ScratchDataSourceImpl
+import sk.o2.scratchcard.data.worker.ActivationSchedulerImpl
 import sk.o2.scratchcard.domain.repository.ActivationDataSource
 import sk.o2.scratchcard.domain.repository.ScratchCardRepository
 import sk.o2.scratchcard.domain.repository.ScratchDataSource
+import sk.o2.scratchcard.domain.scheduler.ActivationScheduler
 import javax.inject.Singleton
 
 @Module
@@ -25,4 +27,7 @@ interface RepositoryModule {
 
     @Binds
     fun bindActivationDataSource(impl: ActivationDataSourceImpl): ActivationDataSource
+
+    @Binds
+    fun bindActivationScheduler(impl: ActivationSchedulerImpl): ActivationScheduler
 }
